@@ -1,0 +1,47 @@
+version: '3'
+
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./config/prometheus/:/etc/prometheus/
+      - ./data/prometheus:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.size=50GB'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    ports:
+      - 9090:9090
+    links:
+      - alertmanager:alertmanager
+    restart: always
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    ports:
+      - 9093:9093
+    volumes:
+      - ./config/alertmanager/:/etc/alertmanager/
+    restart: always
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/alertmanager'
+
+  grafana:
+    image: grafana/grafana
+    user: "104"
+    depends_on:
+      - prometheus
+    ports:
+      - 3002:3000
+    volumes:
+      - ./data/grafana/data:/var/lib/grafana
+      - ./config/grafana/provisioning/:/etc/grafana/provisioning/
+    env_file:
+      - ./config/grafana/config.monitoring
+    links:
+      - prometheus:prometheus
+    restart: always
